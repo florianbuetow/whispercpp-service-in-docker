@@ -1,0 +1,245 @@
+[project]
+name = "docker-whispercpp-service"
+version = "0.0.1"
+description = "Sequential whisper.cpp transcription HTTP API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115", "uvicorn>=0.30", "python-multipart>=0.0.31"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/whispercpp_transcription_api"]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-randomly>=3.15.0",
+    "pytest-timeout>=2.2.0",
+
+    # Linting & Formatting
+    "ruff>=0.1.0",
+
+    # Type Checking
+    "mypy>=1.11.0",
+    "pyright>=1.1.0",
+
+    # Architecture
+    "pytestarch>=4.0.0",
+
+    # Security & Quality
+    "bandit[toml]>=1.7.8",
+    "deptry>=0.20.0",
+    "pygount>=1.6.4",
+    "codespell>=2.3.0",
+    "pip-audit>=2.7.0",
+    "semgrep>=1.179.0",
+
+    # Git Hooks
+    "pre-commit>=3.6.0",
+]
+
+[tool.ruff]
+line-length = 140
+indent-width = 4
+target-version = "py312"
+exclude = [".git", ".ruff_cache", ".venv", ".vscode", "reports"]
+
+[tool.ruff.lint]
+# Core errors & warnings, Google-style docs, types, bugbear, quotes, imports, naming
+# Plus: complexity, modern syntax, performance, simplifications, tidy imports
+select = [
+  "E", "F",   # pycodestyle errors, pyflakes
+  "D",        # pydocstyle (Google-style)
+  "ANN",      # flake8-annotations
+  "B",        # flake8-bugbear
+  "Q",        # flake8-quotes
+  "I",        # isort
+  "N",        # pep8-naming
+  "C90",      # mccabe complexity
+  "UP",       # pyupgrade (modern Python 3.12+ syntax)
+  "PERF",     # perflint (performance anti-patterns)
+  "SIM",      # flake8-simplify
+  "TID",      # flake8-tidy-imports
+]
+ignore = [
+  "D107",    # don't require __init__ docstring (class docstring is fine)
+  "N802",    # allow non-lowercase function names (if needed)
+]
+
+[tool.ruff.lint.mccabe]
+# Flag functions with complexity > 10
+max-complexity = 10
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban relative imports for cleaner, more explicit code
+ban-relative-imports = "all"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D", "ANN"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# pytest-timeout: prevent tests from hanging indefinitely
+timeout = 30
+timeout_method = "thread"
+# pytest-randomly: randomize test order to catch hidden dependencies
+markers = [
+    "architecture: Architecture import rule tests",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+
+# Limit what mypy considers part of the project
+files = ["src", "tests"]
+
+# CI ergonomics
+show_error_codes = true
+pretty = true
+
+# Exclude virtual environment
+exclude = [".venv/"]
+
+# Tests – still type checked, but not fully strict
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "reports/coverage/html"
+
+[tool.coverage.xml]
+output = "reports/coverage/coverage.xml"
+
+[tool.bandit]
+targets = ["src"]
+exclude = [
+    "tests",
+    ".venv",
+    "venv",
+]
+# Reasonable default for CI
+severity = "MEDIUM"
+confidence = "MEDIUM"
+
+[tool.deptry]
+# Source scanning - only check src/ directory
+extend_exclude = [
+    "build",
+    "dist",
+    "docs",
+    "scripts",
+    "data",
+    "reports",
+    "notes",
+]
+
+# Ignore Jupyter notebooks (not part of production code)
+ignore_notebooks = true
+
+# First-party modules - tell deptry what belongs to this project
+known_first_party = [
+    "src",
+]
+
+# PEP 621 dev dependency groups - these are NOT runtime dependencies
+pep621_dev_dependency_groups = [
+    "dev",
+]
+
+# Keep all rules enabled (DEP001-DEP005)
+ignore = []
+
+# CI/Reporting integration
+json_output = "reports/deptry/deptry.json"
+
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+    "pytestarch",  # Used in tests/architecture/ only
+    "python-multipart",  # Loaded by FastAPI for multipart file uploads
+]
+
+[tool.codespell]
+# Paths to check
+check-filenames = true
+check-hidden = false
+
+# Directories to skip
+skip = ".git,.venv,venv,build,dist,reports,*.lock,uv.lock"
+
+# Use external ignore file for maintainability
+ignore-words = "config/codespell/ignore.txt"
+
+[tool.uv]
+# Supply-chain protection: ignore packages published in the last 7 days,
+# giving the community time to detect and yank malicious releases.
+exclude-newer = "7 days"
+
+# Security floors: some quality tools pull large dependency graphs. Keep
+# vulnerable transitive releases out of fresh generated environments while uv
+# still selects the newest compatible direct tools automatically.
+constraint-dependencies = [
+    "cryptography>=50.0.0",
+    "gitpython>=3.1.60",
+    "msgpack>=1.2.1",
+    "pip>=26.2.1",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.15.0",
+    "python-multipart>=0.0.31",
+    "starlette>=1.3.1",
+]
+
+[tool.uv.exclude-newer-package]
+cryptography = "2026-08-01T00:00:00Z"
+gitpython = "2026-08-26T00:00:00Z"
+msgpack = "2026-06-21T00:00:00Z"
+pip = "2026-08-05T00:00:00Z"
+pydantic-settings = "2026-06-21T00:00:00Z"
+python-multipart = "2026-06-21T00:00:00Z"
+semgrep = "2026-10-03T00:00:00Z"
+starlette = "2026-06-21T00:00:00Z"

@@ -1,0 +1,24 @@
+services:
+  transcription:
+    build: .
+    env_file:
+      - ./config/service.env
+    cpus: ${CPU_CORES:-4}
+    ports:
+      - "${HOST_BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-8000}:8000"
+    volumes:
+      - ${HOST_DATA_DIR:-./data}:/data
+      - ${HOST_MODELS_DIR:-./models}:/models
+      - ./config:/config:ro
+    environment:
+      DATA_DIR: /data
+      MODEL_DIR: /models
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-medium.en}
+      WHISPER_THREADS: ${WHISPER_THREADS:-4}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30m
+    restart: unless-stopped
